@@ -51,3 +51,5 @@ coverage/
 *.swp
 *.swo
 *~
+
+test

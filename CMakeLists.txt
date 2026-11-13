@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(librelay STATIC
-    src/relay.cpp
+    src/elf.cpp
 )
 set_target_properties(librelay PROPERTIES
     PREFIX ""
@@ -27,6 +27,9 @@ FetchContent_Declare(quant-backend
 )
 FetchContent_MakeAvailable(quant-backend)
 target_link_libraries(librelay PUBLIC quant-backend)
+
+find_package(Zydis REQUIRED)
+target_link_libraries(librelay PRIVATE Zydis::Zydis)
 
 target_compile_options(librelay PRIVATE
     -Wall
