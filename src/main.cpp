@@ -15,7 +15,7 @@ int main(){
     std::vector<uint64_t> result = manager.find_syscalls();
 
     for (uint64_t address : result) {
-        printf("syscall: 0x%" PRIx64 "\n", address);
+        std::cout << "syscall: 0x" << std::hex << address << "\n";
     }
     return 0;
 }
