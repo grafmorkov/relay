@@ -50,8 +50,7 @@ bool ElfManager::load(const char* path) {
     return true;
 }
 
-std::vector<uint64_t> ElfManager::find_syscalls()
-{
+std::vector<uint64_t> ElfManager::find_syscalls() {
     if(file_size < sizeof(Elf64_Ehdr)) {
         return {};
     }
