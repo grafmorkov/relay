@@ -1,50 +1,47 @@
 #include "elf/elf.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <vector>
 #include <Zydis/Zydis.h>
 
-ElfManager::ElfManager() : m_fd(0), file_size(0), elf_data(0) {
+ElfManager::ElfManager() : file_size(0), elf_data(nullptr) {
 
 }
 
-ElfManager::~ElfManager() {
-    if(!elf_data) return;
-    msync(elf_data, file_size, MS_SYNC);
-    munmap(elf_data, file_size);
-    close(m_fd);
-}
+ElfManager::~ElfManager() = default;
 
 bool ElfManager::load(const char* path) {
-    m_fd = open(path, O_RDWR);
-    if (m_fd < 0) {
-        perror("open");
-        return 1;
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file) {
+        std::cerr << "Failed to open file: " << path << std::endl;
+        return false;
     }
 
-    struct stat st;
-    if (fstat(m_fd, &st) < 0) {
-        perror("fstat");
-        close(m_fd);
-        return 1;
-    }
-    file_size = st.st_size;
-
-    elf_data = static_cast<uint8_t*>(mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0));
-    if (elf_data == MAP_FAILED) {
-        perror("mmap");
-        close(m_fd);
-        return 1;
+    const std::streamsize size = file.tellg();
+    if (size <= 0) {
+        std::cerr << "File is empty: " << path << std::endl;
+        return false;
     }
 
-    if (file_size < sizeof(Elf64_Ehdr) || elf_data[0] != 0x7F || elf_data[1] != 'E' || elf_data[2] != 'L' || elf_data[3] != 'F') {
-        fprintf(stderr, "File is not ELF!\n");
-        munmap(elf_data, file_size);
-        close(m_fd);
-        return 1;
+    file.seekg(0, std::ios::beg);
+    m_bytes.resize(static_cast<size_t>(size));
+    if (!file.read(reinterpret_cast<char*>(m_bytes.data()), size)) {
+        std::cerr << "Failed to read file: " << path << std::endl;
+        m_bytes.clear();
+        return false;
+    }
+
+    elf_data = m_bytes.data();
+    file_size = static_cast<int>(m_bytes.size());
+
+    if (file_size < static_cast<int>(sizeof(Elf64_Ehdr)) ||
+        elf_data[0] != 0x7F || elf_data[1] != 'E' || elf_data[2] != 'L' || elf_data[3] != 'F') {
+        std::cerr << "File is not ELF!" << std::endl;
+        elf_data = nullptr;
+        file_size = 0;
+        m_bytes.clear();
+        return false;
     }
 
     return true;

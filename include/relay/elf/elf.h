@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
-#include <elf.h>
+#include "elf_types.h"
 
 class ElfManager {
 public:
@@ -16,5 +16,5 @@ public:
 private:
     uint64_t get_runtime_address(const uint8_t* elf_data, uint64_t target_file_offset);
 
-    int m_fd;
+    std::vector<uint8_t> m_bytes;
 };
