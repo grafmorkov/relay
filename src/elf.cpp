@@ -5,7 +5,7 @@
 #include <vector>
 #include <Zydis/Zydis.h>
 
-ElfManager::ElfManager() : file_size(0), elf_data(nullptr) {
+ElfManager::ElfManager() : elf_data(nullptr), file_size(0) {
 
 }
 
@@ -33,9 +33,9 @@ bool ElfManager::load(const char* path) {
     }
 
     elf_data = m_bytes.data();
-    file_size = static_cast<int>(m_bytes.size());
+    file_size = m_bytes.size();
 
-    if (file_size < static_cast<int>(sizeof(Elf64_Ehdr)) ||
+    if (file_size < sizeof(Elf64_Ehdr) ||
         elf_data[0] != 0x7F || elf_data[1] != 'E' || elf_data[2] != 'L' || elf_data[3] != 'F') {
         std::cerr << "File is not ELF!" << std::endl;
         elf_data = nullptr;

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
-#include "elf_types.h"
+#include <elf.h>
 
 class ElfManager {
 public:
@@ -12,7 +12,7 @@ public:
     std::vector<uint64_t> find_syscalls();
 
     uint8_t* elf_data;
-    int file_size;
+    size_t file_size;
 private:
     uint64_t get_runtime_address(const uint8_t* elf_data, uint64_t target_file_offset);
 
