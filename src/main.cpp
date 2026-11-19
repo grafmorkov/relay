@@ -1,21 +1,32 @@
-#include <iostream>
 #include <elf/elf.h>
-#include <cinttypes>
-#include <stdio.h>
 
-int main(){
+#include <iostream>
+#include <vector>
+
+int main(int argc, char** argv) {
+    const char* path = (argc > 1) ? argv[1] : "test";
+
     ElfManager manager;
-
-    if(!manager.load("test"))
-    {
+    if (!manager.load(path)) {
         std::cerr << "Failed to open file!" << std::endl;
         return 1;
     }
 
-    std::vector<uint64_t> result = manager.find_syscalls();
+    const std::vector<SyscallSite> sites = manager.find_syscall_sites();
 
-    for (uint64_t address : result) {
-        std::cout << "syscall: 0x" << std::hex << address << "\n";
+    for (const SyscallSite& s : sites) {
+        std::cout << "syscall: 0x" << std::hex << s.va
+                  << "  nr=" << std::dec << s.number
+                  << "  " << s.name;
+
+        if (!s.function.empty())
+            std::cout << "  @" << s.function;
+
+        std::cout << '\n';
     }
+
+    if (sites.empty())
+        std::cerr << "no syscall instructions found\n";
+
     return 0;
 }

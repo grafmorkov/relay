@@ -22,13 +22,13 @@ target_include_directories(librelay PUBLIC
     ${PROJECT_SOURCE_DIR}/include/relay
 )
 
-# FetchContent_Declare(quant-backend
-#     GIT_REPOSITORY https://github.com/quant-lang/qu-backend.git
-#     GIT_TAG main
-#     GIT_SHALLOW TRUE
-# )
-# FetchContent_MakeAvailable(quant-backend)
-# target_link_libraries(librelay PUBLIC quant-backend)
+FetchContent_Declare(quant-backend
+    GIT_REPOSITORY https://github.com/quant-lang/qu-backend.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(quant-backend)
+target_link_libraries(librelay PUBLIC quant-backend)
 
 find_package(zydis CONFIG REQUIRED)
 target_link_libraries(librelay PRIVATE Zydis::Zydis)
@@ -43,9 +43,9 @@ FetchContent_MakeAvailable(asmjit)
 target_link_libraries(librelay PUBLIC asmjit)
 
 if(MSVC)
-    target_compile_options(librelay PRIVATE /W4)
+  target_compile_options(librelay PRIVATE /W4)
 else()
-    target_compile_options(librelay PRIVATE
+  target_compile_options(librelay PRIVATE
         -Wall
         -Wextra
         -Wpedantic
