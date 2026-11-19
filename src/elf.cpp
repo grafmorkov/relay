@@ -44,37 +44,91 @@ bool is_block_boundary(const ZydisDecodedInstruction& ins) {
 
     return ins.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
 }
+bool is_rax_register(ZydisRegister r) {
+    switch (r) {
+        case ZYDIS_REGISTER_RAX:
+        case ZYDIS_REGISTER_EAX:
+        case ZYDIS_REGISTER_AX:
+        case ZYDIS_REGISTER_AL:
+        case ZYDIS_REGISTER_AH:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool writes_rax(const DecodedInsn& d) {
+    for (size_t i = 0; i < d.ins.operand_count; ++i) {
+        const auto& op = d.ops[i];
+
+        if (op.type != ZYDIS_OPERAND_TYPE_REGISTER)
+            continue;
+
+        if (!is_rax_register(op.reg.value))
+            continue;
+
+        if (op.actions & ZYDIS_OPERAND_ACTION_MASK_WRITE)
+            return true;
+    }
+
+    return false;
+}
 
 // looking for the last write of immediates to EAX/RAX that occurs before a syscall.
 int64_t extract_nr(const std::vector<DecodedInsn>& decs, size_t idx) {
-
-    for (size_t n = 0; n < 16 && idx > n; ++n) {
-        const DecodedInsn& d = decs[idx - 1 - n];
+    for (size_t i = idx; i > 0;) {
+        const DecodedInsn& d = decs[--i];
 
         if (is_block_boundary(d.ins))
             break;
 
-        const bool dst_is_rax =
+        if (!writes_rax(d))
+            continue;
+
+        // MOV RAX/EAX, immediate
+        if (d.ins.mnemonic == ZYDIS_MNEMONIC_MOV &&
             d.ins.operand_count_visible >= 2 &&
             d.ops[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-            is_nr_register(d.ops[0].reg.value);
-
-        // mov eax/rax, imm
-        if (dst_is_rax &&
-            (d.ins.mnemonic == ZYDIS_MNEMONIC_MOV ||
-             d.ins.mnemonic == ZYDIS_MNEMONIC_MOVZX) &&
             d.ops[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-            return static_cast<int64_t>(d.ops[1].imm.value.u & 0xFFFFFFFFull);
+
+            const ZydisRegister dst = d.ops[0].reg.value;
+
+            if (dst == ZYDIS_REGISTER_RAX) {
+                const auto& imm = d.ops[1];
+
+                uint64_t value = imm.imm.value.u;
+
+                // MOV RAX, imm32 с sign extension.
+                if (imm.imm.is_signed && imm.size < 64)
+                    value = static_cast<uint64_t>(imm.imm.value.s);
+
+                return static_cast<int64_t>(value);
+            }
+
+            if (dst == ZYDIS_REGISTER_EAX) {
+                return static_cast<int64_t>(
+                    static_cast<uint32_t>(d.ops[1].imm.value.u)
+                );
+            }
         }
 
-        // xor eax, eax -> nr = 0 (read)
+        // XOR RAX, RAX / XOR EAX, EAX -> 0
         if (d.ins.mnemonic == ZYDIS_MNEMONIC_XOR &&
-            dst_is_rax &&
+            d.ins.operand_count_visible >= 2 &&
+            d.ops[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
             d.ops[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-            is_nr_register(d.ops[1].reg.value)) {
+            d.ops[0].reg.value == d.ops[1].reg.value &&
+            (d.ops[0].reg.value == ZYDIS_REGISTER_RAX ||
+             d.ops[0].reg.value == ZYDIS_REGISTER_EAX)) {
+
             return 0;
         }
+
+        // find rax inst but cannot resolve it
+        return -1;
     }
+
     return -1;
 }
 
